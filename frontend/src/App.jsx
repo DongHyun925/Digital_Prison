@@ -52,7 +52,7 @@ function App() {
     console.log("GAME INIT: Attempting connection to:", API_URL)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased to 60s for Render cold start
 
       const res = await fetch(`${API_URL}/api/init`, {
         method: 'POST',
@@ -75,7 +75,7 @@ function App() {
     } catch (err) {
       console.error("GAME INIT FAILURE:", err)
       const errorMsg = err.name === 'AbortError'
-        ? "서버 응답 속도가 너무 느립니다. Render 서버가 깨어나는 중일 수 있습니다 (30~60초 소요)."
+        ? "서버 응답 속도가 너무 느립니다. Render 서버가 깨어나는 중일 수 있습니다 (약 60초 소요)."
         : `연결 실패: ${err.message}`;
 
       addLog([{
@@ -231,6 +231,13 @@ function App() {
             </div>
 
             <div className="flex gap-2">
+              <button
+                onClick={startGame}
+                disabled={loading}
+                className={`px-2 py-1 border border-cyber-glitch text-[10px] hover:bg-cyber-glitch hover:text-black transition-all ${loading ? 'opacity-50 animate-pulse' : ''}`}
+              >
+                {loading ? 'CONNECTING...' : 'RECONNECT'}
+              </button>
               <button
                 onClick={handleSave}
                 className="px-2 py-1 border border-cyber-primary text-[10px] hover:bg-cyber-primary hover:text-black transition-all"

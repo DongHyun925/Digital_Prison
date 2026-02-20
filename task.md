@@ -22,3 +22,4 @@
     - [x] .gitignore 설정 및 GitHub 푸시 (https://github.com/DongHyun925/Digital_Prison) <!-- id: 17 -->
     - [x] README.md 업데이트 (이미지, 타이틀, 아키텍처) <!-- id: 18 -->
     - [x] Render & Vercel 배포 설정 (requirements.txt, Procfile, App.jsx 수정) <!-- id: 19 -->
+    - [x] 배포 완료 및 최종 검증 <!-- id: 20 -->

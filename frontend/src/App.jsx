@@ -22,6 +22,11 @@ function App() {
   }, [apiKey])
 
   const addLog = (newLogs, replace = false) => {
+    if (!newLogs || !Array.isArray(newLogs)) {
+      console.warn("Invalid logs received:", newLogs);
+      return;
+    }
+
     if (replace) {
       setLogs(newLogs)
     } else {
@@ -30,12 +35,13 @@ function App() {
 
     // Process side effects from logs (images, status updates)
     newLogs.forEach(log => {
+      if (!log) return;
       if (log.type === 'image') {
         setImage(log)
       }
       if (log.type === 'ui_update') {
-        setStatus(log.status)
-        setInventory(log.inventory)
+        setStatus(log.status || "SYSTEM STABLE")
+        setInventory(log.inventory || [])
         if (log.location) setLocation(log.location)
       }
     })
@@ -43,16 +49,26 @@ function App() {
 
   const startGame = async () => {
     setLoading(true)
+    console.log("Starting game at:", API_URL)
     try {
       const res = await fetch(`${API_URL}/api/init`, {
         method: 'POST',
         headers: { 'X-Gemini-API-Key': apiKey }
       })
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`)
       const data = await res.json()
-      addLog(data.logs, true) // Pass true to replace existing logs
+      if (data && data.logs) {
+        addLog(data.logs, true)
+      } else {
+        throw new Error("Invalid response format from server")
+      }
     } catch (err) {
       console.error("Failed to start game:", err)
-      addLog([{ agent: "SYSTEM", text: "ERROR: Failed to connect to server.", type: "error" }])
+      addLog([{
+        agent: "SYSTEM",
+        text: `FATAL: 연결 실패 (${err.message}). 주소: ${API_URL}`,
+        type: "error"
+      }])
     }
     setLoading(false)
   }

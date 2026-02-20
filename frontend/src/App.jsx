@@ -49,24 +49,38 @@ function App() {
 
   const startGame = async () => {
     setLoading(true)
-    console.log("Starting game at:", API_URL)
+    console.log("GAME INIT: Attempting connection to:", API_URL)
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
       const res = await fetch(`${API_URL}/api/init`, {
         method: 'POST',
-        headers: { 'X-Gemini-API-Key': apiKey }
+        headers: { 'X-Gemini-API-Key': apiKey },
+        signal: controller.signal
       })
+      clearTimeout(timeoutId);
+
+      console.log("GAME INIT: Response received, status:", res.status)
       if (!res.ok) throw new Error(`HTTP Error: ${res.status}`)
+
       const data = await res.json()
+      console.log("GAME INIT: Data parsed:", data)
+
       if (data && data.logs) {
         addLog(data.logs, true)
       } else {
         throw new Error("Invalid response format from server")
       }
     } catch (err) {
-      console.error("Failed to start game:", err)
+      console.error("GAME INIT FAILURE:", err)
+      const errorMsg = err.name === 'AbortError'
+        ? "서버 응답 속도가 너무 느립니다. Render 서버가 깨어나는 중일 수 있습니다 (30~60초 소요)."
+        : `연결 실패: ${err.message}`;
+
       addLog([{
         agent: "SYSTEM",
-        text: `FATAL: 연결 실패 (${err.message}). 주소: ${API_URL}`,
+        text: `FATAL: ${errorMsg}. [DEBUG: ${API_URL}]`,
         type: "error"
       }])
     }

@@ -207,37 +207,48 @@ class GameSessionManager:
         return self.state
 
     def format_state_for_ui(self):
-        ui_logs = []
-        for msg in self.state["messages"]:
-            agent = "Scenario Master" if isinstance(msg, AIMessage) else "USER"
-            log_type = "message"
-            if "[GUIDE]" in msg.content:
-                agent = "시스템 가이드"
+        try:
+            ui_logs = []
+            for msg in self.state["messages"]:
+                agent = "Scenario Master" if isinstance(msg, AIMessage) else "USER"
+                log_type = "message"
+                if "[GUIDE]" in msg.content:
+                    agent = "시스템 가이드"
+                
+                ui_logs.append({
+                    "agent": agent,
+                    "text": msg.content,
+                    "type": log_type
+                })
+
+            sector_info = SECTOR_DATA.get(self.state["current_sector"], {})
+            ui_logs.append({
+                "agent": "SYSTEM",
+                "text": "",
+                "type": "ui_update",
+                "status": "SYSTEM ONLINE" if not self.state["unlocked"] else "EXIT UNLOCKED",
+                "inventory": self.state.get("inventory", []),
+                "location": sector_info.get("name", "Unknown")
+            })
             
             ui_logs.append({
-                "agent": agent,
-                "text": msg.content,
-                "type": log_type
+                "agent": "비주얼 일러스트레이터",
+                "content": sector_info.get("short_desc", sector_info.get("desc", "격리 구역 시각화 중...")),
+                "type": "image",
+                "url": f"/assets/sector_{self.state.get('current_sector', 0)}.png"
             })
 
-        sector_info = SECTOR_DATA.get(self.state["current_sector"], {})
-        ui_logs.append({
-            "agent": "SYSTEM",
-            "text": "",
-            "type": "ui_update",
-            "status": "SYSTEM ONLINE" if not self.state["unlocked"] else "EXIT UNLOCKED",
-            "inventory": self.state["inventory"],
-            "location": sector_info.get("name", "Unknown")
-        })
-        
-        ui_logs.append({
-            "agent": "비주얼 일러스트레이터",
-            "content": sector_info.get("short_desc", sector_info.get("desc")),
-            "type": "image",
-            "url": f"/assets/sector_{self.state['current_sector']}.png"
-        })
-
-        return {"logs": ui_logs}
+            return {"logs": ui_logs}
+        except Exception as e:
+            print(f"ERROR in format_state_for_ui: {str(e)}")
+            traceback.print_exc()
+            return {
+                "logs": [{
+                    "agent": "SYSTEM",
+                    "text": f"CRITICAL: UI 데이터 포맷팅 오류 ({str(e)})",
+                    "type": "error"
+                }]
+            }
 
     def process_action(self, user_input):
         if len(self.state["messages"]) > 20:

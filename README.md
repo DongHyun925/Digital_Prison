@@ -43,7 +43,7 @@ graph TD
 - **다중 페르소나 시스템**:
   - 🎭 **Scenario Master**: 전체적인 서사와 분위기 조성.
   - 🧩 **Puzzle Architect**: 구역별 퍼즐 생성 및 힌트 제공.
-  - 👁️ **Visual Illustrator**: 상황에 맞는 시각적 묘사 및 이미지 생성(예정).
+  - 👁️ **Visual Illustrator**: 상황에 맞는 시각적 묘사 및 이미지 생성.
   - ⚙️ **System Guide**: 냉철한 시스템 메시지 전달.
 
 ### 2. 다중 엔딩 시스템

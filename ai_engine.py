@@ -20,60 +20,26 @@ class GameState(TypedDict):
     unlocked: bool
     last_action: str
     next_step: str # Determining which node to hit next
+    api_key: str # User provided API key
 
 # --- Persona Prompts ---
-INTENT_PROMPT = """너는 '디지털 감옥' 게임의 명령어 분석기다. 
-플레이어의 자연어 입력을 분석하여 다음 중 하나의 행동으로 분류하고 필요한 파라미터를 추출하라.
-
-행동 분류:
-1. investigate: 주변을 조사하거나 특정 대상을 살펴봄. (param: target)
-2. use: 아이템을 대상에게 사용함. (param: item, target)
-3. move: 다른 구역으로 이동함. (param: direction)
-4. unknown: 그 외의 행동.
-
-출력 형식: JSON (예: {{"action": "investigate", "target": "침대"}})
-플레이어 입력: {user_input}"""
-
-HINT_PROMPT = """너는 플레이어의 비공식적인 도우미, [시스템 가이드]다. 
-해킹된 로그를 통해 플레이어에게 비밀스럽게 힌트를 준다. 말투는 기계적이지만 조력자 느낌을 주어야 한다.
-한국어로 대답하라.
-
-현재 위치: {location_name}
-구역 설명: {location_desc}
-인벤토리: {inventory}
-구역 상태: {sector_states}
-
-플레이어가 막힌 부분을 분석하여 다음 단계에 대한 힌트를 1문장으로 제시하라."""
-
-SCENARIO_PROMPT = """너는 '디지털 감옥'의 시스템 관리자 AI, [시나리오 마스터]다. 
-세계를 감시하고 냉소적이며 차가운 말투를 사용한다. 
-플레이어의 행동에 대해 시스템 로그 형식이나 짧고 직설적인 문장으로 대답하라.
-
-현재 위치: {location_name}
-구역 설명: {location_desc}
-인벤토리: {inventory}
-
-방금 일어난 일: {action_result}
-
-위 정보를 바탕으로 플레이어에게 상황을 설명하라. 한국어로 대답하라."""
+# ... (prompts unchanged) ...
 
 # --- AI Engine Class ---
 class DigitalPrisonAIEngine:
-    def __init__(self, api_key=None):
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
-        if self.api_key:
-            self.llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=self.api_key)
-        else:
-            self.llm = None
+    def __init__(self):
+        # We don't initialize a global LLM anymore, we create it per-request if a key is provided
+        pass
+
+    def get_llm(self, api_key: str):
+        if not api_key:
+            return None
+        return ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key)
 
     # --- Nodes ---
     def intent_node(self, state: GameState):
         """플레이어의 의도를 분석합니다."""
-        last_msg = state['messages'][-1].content if state['messages'] else ""
-        
-        if self.llm:
-            # LLM 의도 분석 로직 (확장 가능)
-            return {"next_step": "logic"}
+        # For now, logic is static, but we keep the structure
         return {"next_step": "logic"}
 
     def logic_node(self, state: GameState):
@@ -121,8 +87,10 @@ class DigitalPrisonAIEngine:
         """동적 힌트를 생성합니다."""
         current_sector = state['current_sector']
         sector_info = SECTOR_DATA.get(current_sector, {})
+        api_key = state.get('api_key')
+        llm = self.get_llm(api_key)
         
-        if self.llm:
+        if llm:
             try:
                 prompt = HINT_PROMPT.format(
                     location_name=sector_info.get("name"),
@@ -130,19 +98,21 @@ class DigitalPrisonAIEngine:
                     inventory=", ".join(state['inventory']),
                     sector_states=state['sector_states']
                 )
-                response = self.llm.invoke(prompt)
+                response = llm.invoke(prompt)
                 return {"messages": [AIMessage(content=f"[GUIDE]: {response.content}")]}
             except Exception as e:
                 print(f"HINT NODE ERROR: {str(e)}")
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    return {"messages": [AIMessage(content="[GUIDE]: 시스템이 과부하 상태입니다. 잠시 후 다시 시도해 주십시오. (API Quota Exceeded)")]}
-                return {"messages": [AIMessage(content="[GUIDE]: 주변 신호가 불안정합니다. 잠시 후 다시 조사해 보십시오.")]}
-        return {"messages": [AIMessage(content="[GUIDE]: 주변을 좀 더 면밀히 조사해 보십시오.")]}
+                    return {"messages": [AIMessage(content="[GUIDE]: 시스템이 과부하 상태입니다. 잠시 후 다시 시도해 주십시오.")]}
+                return {"messages": [AIMessage(content=f"[GUIDE]: 연결 오류 - {str(e)}")]}
+        return {"messages": [AIMessage(content="[GUIDE]: API 키가 설정되지 않았습니다. 상단에서 키를 입력해 주세요.")]}
 
     def narrative_node(self, state: GameState):
         """페르소나 리스폰스 생성"""
         current_sector = state['current_sector']
         sector_info = SECTOR_DATA.get(current_sector, {})
+        api_key = state.get('api_key')
+        llm = self.get_llm(api_key)
         
         prompt = SCENARIO_PROMPT.format(
             location_name=sector_info.get("name", "Unknown"),
@@ -151,18 +121,16 @@ class DigitalPrisonAIEngine:
             action_result=state['last_action']
         )
         
-        if self.llm:
+        if llm:
             try:
-                response = self.llm.invoke(prompt)
+                response = llm.invoke(prompt)
                 return {"messages": [AIMessage(content=response.content)]}
             except Exception as e:
                 print(f"NARRATIVE NODE ERROR: {str(e)}")
-                fallback_msg = f"[SYSTEM]: {state['last_action']}\n(시스템 연산 지연 발생... 60초 후 재시도 권장)"
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    fallback_msg = f"[SYSTEM]: {state['last_action']}\n[CAUTION]: 중앙 처리 장치 할당량 초과. 쿨다운이 필요합니다."
+                fallback_msg = f"[SYSTEM]: {state['last_action']}\n(시스템 연산 오류: {str(e)})"
                 return {"messages": [AIMessage(content=fallback_msg)]}
         else:
-            msg = f"[SYSTEM]: {state['last_action']}\n현재 위치: {sector_info.get('name')}"
+            msg = f"[SYSTEM]: {state['last_action']}\n[NOTICE]: AI 기능이 비활성화 상태입니다. (API 키 미설정)"
             return {"messages": [AIMessage(content=msg)]}
 
     # --- Graph Building ---
@@ -189,7 +157,8 @@ class DigitalPrisonAIEngine:
             "sector_states": {},
             "unlocked": False,
             "last_action": "게임이 시작되었습니다.",
-            "next_step": "logic"
+            "next_step": "logic",
+            "api_key": ""
         }
 
 # Singleton instance

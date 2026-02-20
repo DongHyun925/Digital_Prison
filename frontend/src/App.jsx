@@ -15,6 +15,11 @@ function App() {
   const [location, setLocation] = useState("UNKNOWN")
   const [loading, setLoading] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(false)
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '')
+
+  useEffect(() => {
+    localStorage.setItem('gemini_api_key', apiKey)
+  }, [apiKey])
 
   const addLog = (newLogs, replace = false) => {
     if (replace) {
@@ -39,7 +44,10 @@ function App() {
   const startGame = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/init`, { method: 'POST' })
+      const res = await fetch(`${API_URL}/api/init`, {
+        method: 'POST',
+        headers: { 'X-Gemini-API-Key': apiKey }
+      })
       const data = await res.json()
       addLog(data.logs, true) // Pass true to replace existing logs
     } catch (err) {
@@ -55,7 +63,10 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/api/action`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Gemini-API-Key': apiKey
+        },
         body: JSON.stringify({ command: text })
       })
       const data = await res.json()
@@ -70,7 +81,10 @@ function App() {
   const getHint = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/hint`, { method: 'POST' })
+      const res = await fetch(`${API_URL}/api/hint`, {
+        method: 'POST',
+        headers: { 'X-Gemini-API-Key': apiKey }
+      })
       const data = await res.json()
       addLog(data.logs)
     } catch (err) {
@@ -118,7 +132,10 @@ function App() {
   const handleSave = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/save`, { method: 'POST' })
+      const res = await fetch(`${API_URL}/api/save`, {
+        method: 'POST',
+        headers: { 'X-Gemini-API-Key': apiKey }
+      })
       const data = await res.json()
       if (data.state) {
         localStorage.setItem('digital_prison_save', JSON.stringify(data.state))
@@ -142,7 +159,10 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/api/load`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Gemini-API-Key': apiKey
+        },
         body: JSON.stringify({ state: JSON.parse(savedState) })
       })
       const data = await res.json()
@@ -166,8 +186,21 @@ function App() {
         {/* Header (Top) */}
         <header className="col-span-12 row-span-1 border-b-2 border-cyber-primary flex items-center justify-between px-4 bg-cyber-dark/80 backdrop-blur">
           <h1 className="text-2xl font-bold tracking-widest text-shadow-neon">THE DIGITAL PRISON</h1>
-          <div className="flex gap-4 text-sm items-center">
-            <div className="flex gap-2 mr-4">
+
+          <div className="flex gap-4 text-sm items-center flex-1 justify-end">
+            {/* API KEY INPUT */}
+            <div className="flex items-center gap-2 border border-cyber-primary/50 px-2 py-1 bg-black/40">
+              <span className="text-[10px] text-cyber-primary opacity-70">GEMINI KEY:</span>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter API Key..."
+                className="bg-transparent border-none outline-none text-[10px] w-32 text-cyber-primary placeholder:text-cyber-primary/30"
+              />
+            </div>
+
+            <div className="flex gap-2">
               <button
                 onClick={handleSave}
                 className="px-2 py-1 border border-cyber-primary text-[10px] hover:bg-cyber-primary hover:text-black transition-all"
@@ -187,8 +220,8 @@ function App() {
             >
               [{audioEnabled ? 'AUDIO: ON' : 'AUDIO: OFF'}]
             </button>
-            <span className="animate-pulse">NET: ONLINE</span>
-            <span>SEC: {location.includes("구역") ? location.split("구역")[1].split(":")[0].trim().padStart(2, '0') : "00"}</span>
+            <span className="animate-pulse hidden md:block">NET: ONLINE</span>
+            <span className="hidden md:block">SEC: {location.includes("구역") ? location.split("구역")[1].split(":")[0].trim().padStart(2, '0') : "00"}</span>
           </div>
         </header>
 

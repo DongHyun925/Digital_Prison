@@ -4,8 +4,8 @@ import traceback
 from ai_engine import session_manager
 
 app = Flask(__name__)
-# 폰트엔드(Vercel)에서의 요청을 허용하기 위해 CORS 명시적 설정
-CORS(app, resources={r"/api/*": {"origins": "*"}}, allow_headers=["Content-Type", "X-Gemini-API-Key"])
+# 폰트엔드와의 원활한 통신을 위해 CORS 정책을 최대한 완화 (Preflight 문제 해결)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, allow_headers="*", methods=["GET", "POST", "OPTIONS"])
 
 @app.route('/')
 def health_check():

@@ -5,7 +5,7 @@ import StatusPanel from './components/StatusPanel'
 import { soundEngine } from './utils/SoundEngine'
 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 function App() {
   const [logs, setLogs] = useState([])

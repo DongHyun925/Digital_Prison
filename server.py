@@ -4,8 +4,8 @@ import traceback
 from ai_engine import session_manager
 
 app = Flask(__name__)
-# 폰트엔드와의 원활한 통신을 위해 CORS 정책을 최대한 완화 (Preflight 문제 해결)
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, allow_headers="*", methods=["GET", "POST", "OPTIONS"])
+# CORS 설정 최적화: wildcard(*)를 사용할 때는 credentials를 허용하지 않아야 브라우저 오류가 없습니다.
+CORS(app, resources={r"/*": {"origins": "*"}}, allow_headers="*", methods=["GET", "POST", "OPTIONS"])
 
 @app.route('/')
 def health_check():

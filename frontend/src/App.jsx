@@ -141,7 +141,7 @@ function App() {
       let errorMsg = err.message;
       if (err.name === 'AbortError') errorMsg = "서버 응답 속도가 너무 느립니다 (60초 초과).";
       if (err.message === "Failed to fetch") {
-        errorMsg = `서버 연결 실패. [${API_URL}] 주소에 접속할 수 없습니다. Vercel 환경 변수 설정을 확인해 주세요.`;
+        errorMsg = `서버 연결 실패 (Failed to fetch). 브라우저가 [${API_URL}] 요청을 차단했거나 서버가 응답하지 않습니다. (상세: ${err.toString()})`;
       }
       addLog([{ agent: "SYSTEM", text: `❌ 연결 오류: ${errorMsg}`, type: "error" }])
     }

@@ -69,14 +69,10 @@ class DigitalPrisonAIEngine:
     def get_llm(self, api_key: str):
         if not api_key:
             return None
-        return ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key)
+        # Switch to 1.5-flash for better stability and speed on limited resources
+        return ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
 
     # --- Nodes ---
-    def intent_node(self, state: GameState):
-        """플레이어의 의도를 분석합니다."""
-        # For now, logic is static, but we keep the structure
-        return {"next_step": "logic"}
-
     def logic_node(self, state: GameState):
         """의도 또는 키워드를 기반으로 게임 규칙을 처리합니다."""
         last_msg = state['messages'][-1].content if state['messages'] else ""
@@ -86,7 +82,7 @@ class DigitalPrisonAIEngine:
         result = "무엇을 해야 할지 모르겠습니다."
         new_inventory = list(state['inventory'])
         new_sector_states = dict(state['sector_states'])
-        unlocked = state['unlocked']
+        unlocked = state.get('unlocked', False)
         next_sector = current_sector
 
         # logic processing
@@ -114,8 +110,7 @@ class DigitalPrisonAIEngine:
             "sector_states": new_sector_states,
             "unlocked": unlocked,
             "current_sector": next_sector,
-            "last_action": result,
-            "next_step": "narrative"
+            "last_action": result
         }
 
     def hint_node(self, state: GameState):
@@ -136,11 +131,9 @@ class DigitalPrisonAIEngine:
                 response = llm.invoke(prompt)
                 return {"messages": [AIMessage(content=f"[GUIDE]: {response.content}")]}
             except Exception as e:
-                print(f"HINT NODE ERROR: {str(e)}")
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    return {"messages": [AIMessage(content="[GUIDE]: 시스템이 과부하 상태입니다. 잠시 후 다시 시도해 주십시오.")]}
+                print(f"HINT NODE ERROR: {traceback.format_exc()}")
                 return {"messages": [AIMessage(content=f"[GUIDE]: 연결 오류 - {str(e)}")]}
-        return {"messages": [AIMessage(content="[GUIDE]: API 키가 설정되지 않았습니다. 상단에서 키를 입력해 주세요.")]}
+        return {"messages": [AIMessage(content="[GUIDE]: API 키가 설정되지 않았습니다.")]}
 
     def narrative_node(self, state: GameState):
         """페르소나 리스폰스 생성"""
@@ -161,23 +154,19 @@ class DigitalPrisonAIEngine:
                 response = llm.invoke(prompt)
                 return {"messages": [AIMessage(content=response.content)]}
             except Exception as e:
-                print(f"NARRATIVE NODE ERROR: {str(e)}")
-                fallback_msg = f"[SYSTEM]: {state['last_action']}\n(시스템 연산 오류: {str(e)})"
-                return {"messages": [AIMessage(content=fallback_msg)]}
+                print(f"NARRATIVE NODE ERROR: {traceback.format_exc()}")
+                return {"messages": [AIMessage(content=f"[SYSTEM]: {state['last_action']}\n(AI 오류: {str(e)})")]}
         else:
-            msg = f"[SYSTEM]: {state['last_action']}\n[NOTICE]: AI 기능이 비활성화 상태입니다. (API 키 미설정)"
-            return {"messages": [AIMessage(content=msg)]}
+            return {"messages": [AIMessage(content=f"[SYSTEM]: {state['last_action']}")]}
 
     # --- Graph Building ---
     def build_graph(self):
         builder = StateGraph(GameState)
-        builder.add_node("intent", self.intent_node)
         builder.add_node("logic", self.logic_node)
         builder.add_node("narrative", self.narrative_node)
         builder.add_node("hint", self.hint_node)
         
-        builder.add_edge(START, "intent")
-        builder.add_edge("intent", "logic")
+        builder.add_edge(START, "logic")
         builder.add_edge("logic", "narrative")
         builder.add_edge("narrative", END)
         builder.add_edge("hint", END) 

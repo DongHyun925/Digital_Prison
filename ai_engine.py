@@ -242,16 +242,36 @@ class GameSessionManager:
             }
 
     def process_action(self, user_input):
-        if len(self.state["messages"]) > 20:
-             self.state["messages"] = self.state["messages"][-20:]
+        try:
+            if len(self.state["messages"]) > 20:
+                 self.state["messages"] = self.state["messages"][-20:]
 
-        self.state["messages"].append(HumanMessage(content=user_input))
-        self.state = ai_graph.invoke(self.state)
-        return self.format_state_for_ui()
+            self.state["messages"].append(HumanMessage(content=user_input))
+            self.state = ai_graph.invoke(self.state)
+            return self.format_state_for_ui()
+        except Exception as e:
+            print(f"PROCESS ACTION ERROR: {traceback.format_exc()}")
+            return {
+                "logs": [{
+                    "agent": "SYSTEM",
+                    "text": f"CORE ENGINE ERROR: {str(e)}",
+                    "type": "error"
+                }]
+            }
 
     def get_hint(self):
-        hint_state = ai_engine_instance.hint_node(self.state)
-        self.state["messages"].extend(hint_state["messages"])
-        return self.format_state_for_ui()
+        try:
+            hint_state = ai_engine_instance.hint_node(self.state)
+            self.state["messages"].extend(hint_state["messages"])
+            return self.format_state_for_ui()
+        except Exception as e:
+            print(f"GET HINT ERROR: {traceback.format_exc()}")
+            return {
+                "logs": [{
+                    "agent": "시스템 가이드",
+                    "text": f"HINT ERROR: {str(e)}",
+                    "type": "error"
+                }]
+            }
 
 session_manager = GameSessionManager()

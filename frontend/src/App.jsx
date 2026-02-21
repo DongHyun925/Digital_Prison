@@ -93,7 +93,7 @@ function App() {
     console.log("COMMAND SEND: Executing:", text)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased to 60s
 
       const res = await fetch(`${API_URL}/api/action`, {
         method: 'POST',
@@ -117,7 +117,7 @@ function App() {
       addLog(data.logs)
     } catch (err) {
       console.error("COMMAND SEND FAILURE:", err)
-      const errorMsg = err.name === 'AbortError' ? "서버 응답 시간이 초과되었습니다 (30초)." : err.message;
+      const errorMsg = err.name === 'AbortError' ? "서버 응답 시간이 초과되었습니다 (60초). 다시 시도해 주세요." : err.message;
       addLog([{ agent: "SYSTEM", text: `❌ 연결 오류: ${errorMsg}`, type: "error" }])
     }
     setLoading(false)
@@ -128,7 +128,7 @@ function App() {
     console.log("HINT REQUEST: Starting...")
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased to 60s
 
       const res = await fetch(`${API_URL}/api/hint`, {
         method: 'POST',
@@ -147,7 +147,8 @@ function App() {
       addLog(data.logs)
     } catch (err) {
       console.error("HINT REQUEST FAILURE:", err)
-      addLog([{ agent: "SYSTEM", text: `⚠️ 신호 방해: ${err.message}`, type: "error" }])
+      const errorMsg = err.name === 'AbortError' ? "힌트 시스템 응답 시간 초과 (60초)." : err.message;
+      addLog([{ agent: "SYSTEM", text: `⚠️ 신호 방해: ${errorMsg}`, type: "error" }])
     }
     setLoading(false)
   }

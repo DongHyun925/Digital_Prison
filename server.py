@@ -5,34 +5,31 @@ from ai_engine import session_manager
 
 app = Flask(__name__)
 
-# --- Manual CORS & Preflight Handling ---
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "*")
-        response.headers.add("Access-Control-Allow-Methods", "*")
-        return response
-
+# --- Simplified & Clean CORS Handling ---
 @app.after_request
 def add_cors_headers(response):
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,X-Gemini-API-Key,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+    # .set() ensures the header is unique and not duplicated
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type,X-Gemini-API-Key,Authorization")
+    response.headers.set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
     return response
+
+@app.before_request
+def handle_options():
+    # Return 200 for all OPTIONS requests immediately
+    # after_request will still run and add the unique CORS headers
+    if request.method == "OPTIONS":
+        return make_response("", 200)
 
 def create_error_response(e, status_code=500):
     error_trace = traceback.format_exc()
     print(f"!!! SERVER ERROR [{status_code}] !!!\n{error_trace}")
     response = jsonify({
-        "error": "Backend Failure",
+        "error": "Internal Server Error",
         "message": str(e),
         "traceback": error_trace
     })
     response.status_code = status_code
-    # Ensure CORS even on raw errors
-    response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
 @app.errorhandler(Exception)

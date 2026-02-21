@@ -100,32 +100,12 @@ function App() {
     setLoading(false)
   }
 
-  // Sector 0 Local Logic for "Immediate" feel
-  const LOCAL_LOGIC = {
-    "0": { // Sector 0
-      "침대": "매트리스 밑을 뒤져 [휘어진 철사]를 찾았습니다. (로컬 데이터 확인)",
-      "바닥": "먼지 구덩이 속에 [더러운 렌즈]가 떨어져 있습니다. (로컬 데이터 확인)",
-      "터미널": "전원이 들어오지 않습니다. 내부 회로가 끊어져 있습니다. (로컬 데이터 확인)",
-      "유니폼": "입고 있는 죄수복입니다. 낡았지만 튼튼합니다. (로컬 데이터 확인)",
-      "조사": "주변을 살펴봅니다. 차가운 금속 벽과 몇 가지 사물이 보입니다. (로컬 응답 활성)"
-    }
-  }
-
-  const sendCommand = async (text) => {
-    if (!text.trim()) return
-    setLogs(prev => [...prev, { agent: "USER", text, type: "user_input" }])
-
-    // Immediate Local Feedback (Optimistic UI)
-    const sector0 = LOCAL_LOGIC["0"];
-    for (const key in sector0) {
-      if (text.includes(key)) {
-        addLog([{ agent: "SYSTEM", text: `[LOCAL_ACK]: ${sector0[key]}`, type: "success" }])
-        break;
-      }
-    }
+  const sendCommand = async (cmd) => {
+    if (!cmd.trim()) return
+    addLog([{ agent: "USER", text: cmd, type: "message" }])
 
     setLoading(true)
-    console.log("COMMAND SEND: Executing:", text)
+    console.log("COMMAND SEND: Executing:", cmd)
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -136,7 +116,7 @@ function App() {
           'Content-Type': 'application/json',
           'X-Gemini-API-Key': apiKey
         },
-        body: JSON.stringify({ command: text }),
+        body: JSON.stringify({ command: cmd }),
         signal: controller.signal
       })
       clearTimeout(timeoutId);
@@ -148,8 +128,10 @@ function App() {
       }
 
       const data = await res.json()
-      console.log("COMMAND SEND: Success:", data)
-      addLog(data.logs)
+      console.log("COMMAND SEND: Data:", data)
+      if (data && data.logs) {
+        addLog(data.logs)
+      }
     } catch (err) {
       console.error("COMMAND SEND FAILURE:", err)
       let errorMsg = err.message;
@@ -157,7 +139,6 @@ function App() {
       if (err.message === "Failed to fetch") {
         errorMsg = `서버 연결 실패 (Failed to fetch). 브라우저가 [${API_URL}] 요청을 차단했거나 서버가 응답하지 않습니다. (상세: ${err.toString()})`;
       } else {
-        // Handle 500 error with JSON body from backend (Traceback inclusion)
         try {
           if (err.message.includes("| Body: ")) {
             const jsonPart = err.message.split("| Body: ")[1];
@@ -180,7 +161,7 @@ function App() {
     console.log("HINT REQUEST: Starting...")
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased to 60s
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const res = await fetch(`${API_URL}/api/hint`, {
         method: 'POST',
@@ -209,7 +190,6 @@ function App() {
     startGame()
   }, [])
 
-  // Audio Logic: Trigger theme change on location change
   useEffect(() => {
     if (location && location.includes("구역")) {
       const match = location.match(/구역 (\d+)/)
@@ -224,13 +204,10 @@ function App() {
     if (!audioEnabled) {
       soundEngine.init()
       await soundEngine.resume()
-
-      // Re-trigger current theme
       if (location && location.includes("구역")) {
         const match = location.match(/구역 (\d+)/)
         if (match) {
           const sectorNum = parseInt(match[1])
-          // Force theme update even if same
           soundEngine.currentTheme = null
           soundEngine.playTheme(sectorNum)
         }
@@ -278,7 +255,7 @@ function App() {
       })
       const data = await res.json()
       if (data.success) {
-        addLog(data.logs, true) // Replace logs on load
+        addLog(data.logs, true)
       }
     } catch (err) {
       console.error("Load failed:", err)
@@ -290,16 +267,10 @@ function App() {
   return (
     <div className="flex h-screen w-screen bg-cyber-bg text-cyber-primary font-mono overflow-hidden">
       <div className="scanline"></div>
-
-      {/* Main Grid Layout */}
       <div className="grid grid-cols-12 grid-rows-12 gap-4 p-4 w-full h-full z-10">
-
-        {/* Header (Top) */}
         <header className="col-span-12 row-span-1 border-b-2 border-cyber-primary flex items-center justify-between px-4 bg-cyber-dark/80 backdrop-blur">
           <h1 className="text-2xl font-bold tracking-widest text-shadow-neon">THE DIGITAL PRISON</h1>
-
           <div className="flex gap-4 text-sm items-center flex-1 justify-end">
-            {/* API KEY INPUT */}
             <div className="flex items-center gap-2 border border-cyber-primary/50 px-2 py-1 bg-black/40">
               <span className="text-[10px] text-cyber-primary opacity-70">GEMINI KEY:</span>
               <input
@@ -310,7 +281,6 @@ function App() {
                 className="bg-transparent border-none outline-none text-[10px] w-32 text-cyber-primary placeholder:text-cyber-primary/30"
               />
             </div>
-
             <div className="flex gap-2">
               <button
                 onClick={startGame}
@@ -343,21 +313,17 @@ function App() {
           </div>
         </header>
 
-        {/* Visual Panel (Main Center-Left) */}
         <div className="col-span-12 md:col-span-8 row-span-7 border border-cyber-dark bg-black relative">
           <VisualPanel imageData={image} />
         </div>
 
-        {/* Status Panel (Right Sidebar) */}
         <div className="col-span-12 md:col-span-4 row-span-11 border border-cyber-primary bg-cyber-dark/50 p-4">
           <StatusPanel status={status} inventory={inventory} location={location} onHint={getHint} />
         </div>
 
-        {/* Terminal (Bottom Center-Left) */}
         <div className="col-span-12 md:col-span-8 row-span-4 border-t border-cyber-primary bg-cyber-dark/90 text-sm">
           <Terminal logs={logs} onSend={sendCommand} loading={loading} />
         </div>
-
       </div >
     </div >
   )

@@ -69,8 +69,8 @@ class DigitalPrisonAIEngine:
     def get_llm(self, api_key: str):
         if not api_key:
             return None
-        # Switch to 1.5-flash for better stability and speed on limited resources
-        return ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
+        # Reverting to 2.0-flash as it was working, intent node removal will handle the speed
+        return ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key)
 
     # --- Nodes ---
     def logic_node(self, state: GameState):

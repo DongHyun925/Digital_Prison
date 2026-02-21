@@ -143,8 +143,8 @@ function App() {
 
       console.log("COMMAND SEND: Status:", res.status)
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(`Server Error (${res.status}): ${errData.error_detail || 'Unknown'}`);
+        const errBody = await res.text();
+        throw new Error(`HTTP Error: ${res.status} | Body: ${errBody}`);
       }
 
       const data = await res.json()
@@ -156,6 +156,19 @@ function App() {
       if (err.name === 'AbortError') errorMsg = "서버 응답 속도가 너무 느립니다 (60초 초과).";
       if (err.message === "Failed to fetch") {
         errorMsg = `서버 연결 실패 (Failed to fetch). 브라우저가 [${API_URL}] 요청을 차단했거나 서버가 응답하지 않습니다. (상세: ${err.toString()})`;
+      } else {
+        // Handle 500 error with JSON body from backend (Traceback inclusion)
+        try {
+          if (err.message.includes("| Body: ")) {
+            const jsonPart = err.message.split("| Body: ")[1];
+            const serverErr = JSON.parse(jsonPart);
+            if (serverErr.traceback || serverErr.error_detail) {
+              errorMsg = `서버 내부 오류: ${serverErr.message || serverErr.error || 'Unknown'}\n[TRACE]: ${serverErr.traceback || serverErr.error_detail}`;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse error body:", e);
+        }
       }
       addLog([{ agent: "SYSTEM", text: `❌ 연결 오류: ${errorMsg}`, type: "error" }])
     }

@@ -13,9 +13,13 @@
 - [ ] 모던 웹 애플리케이션 구축 (React + Tailwind) <!-- id: 10 -->
 - [x] 모던 웹 애플리케이션 구축 (React + Tailwind) <!-- id: 10 -->
     - [x] Flask API 서버 (server.py) 구축 <!-- id: 11 -->
+    - [x] Render Cold Start 최적화 (UX 개선) <!-- id: 29 -->
+    - [x] 타임아웃 시간 연장 및 로딩 메시지 개선 <!-- id: 30 -->
+    - [x] 재시도(Retry) 버튼 UI 추가 <!-- id: 31 -->
     - [x] React 프로젝트 (Vite) 초기화 및 Tailwind 설정 <!-- id: 12 -->
     - [x] 시스템 가이드 에이전트 UI 컴포넌트 개발 <!-- id: 13 -->
     - [x] 게임 로직(API)과 프론트엔드 연동 <!-- id: 14 -->
+- [x] AI 응답 속도 최적화 및 모델 복구 <!-- id: 32 -->
 
 - [x] 프로젝트 배포 및 관리 (Deployment & Management) <!-- id: 15 -->
     - [x] README.md 작성 <!-- id: 16 -->

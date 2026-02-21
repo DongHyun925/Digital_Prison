@@ -312,7 +312,7 @@ function App() {
               [{audioEnabled ? 'AUDIO: ON' : 'AUDIO: OFF'}]
             </button>
             <span className="animate-pulse hidden md:block">NET: ONLINE</span>
-            <span className="hidden md:block">SEC: {location.includes("구역") ? location.split("구역")[1].split(":")[0].trim().padStart(2, '0') : "00"}</span>
+            <span className="hidden md:block">SEC: {(location && location.includes("구역")) ? location.split("구역")[1].split(":")[0].trim().padStart(2, '0') : "00"}</span>
           </div>
         </header>
 

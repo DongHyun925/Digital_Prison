@@ -1,49 +1,12 @@
+import os
+import traceback
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
-import traceback
-import sys
 from ai_engine import session_manager
 
 app = Flask(__name__)
-# CORS 설정을 최대한 허용
-CORS(app)
-
-@app.before_request
-def handle_options():
-    # OPTIONS 요청(Preflight)에 대해 즉시 200 응답과 헤더를 반환하여 브라우저 차단 방지
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', '*')
-        return response
-
-@app.after_request
-def add_cors_headers(response):
-    # 모든 응답에 CORS 헤더 강제 주입
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,X-Gemini-API-Key,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
-@app.errorhandler(Exception)
-def handle_any_error(e):
-    # 어떤 에러가 나도 CORS 헤더와 함께 상세 원인을 JSON으로 반환
-    error_msg = str(e)
-    error_type = type(e).__name__
-    error_trace = traceback.format_exc()
-    print(f"!!! GLOBAL ERROR !!!\n{error_trace}")
-    
-    response = jsonify({
-        "error": "Backend Error",
-        "message": error_msg,
-        "type": error_type,
-        "traceback": error_trace
-    })
-    response.status_code = 500
-    # 에러 응답에도 강제로 헤더 추가 (after_request가 안 불릴 경우 대비)
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
+# 표준 flask-cors 설정을 사용하여 브라우저 호환성 확보
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/')
 def health_check():
@@ -55,44 +18,52 @@ def ping():
 
 @app.route('/api/init', methods=['POST'])
 def init_game():
-    api_key = request.headers.get('X-Gemini-API-Key', '')
-    state = session_manager.reset()
-    session_manager.state['api_key'] = api_key
-    return jsonify(session_manager.format_state_for_ui())
+    try:
+        api_key = request.headers.get('X-Gemini-API-Key', '')
+        session_manager.reset()
+        session_manager.state['api_key'] = api_key
+        return jsonify(session_manager.format_state_for_ui())
+    except Exception as e:
+        print(f"INIT ERROR: {traceback.format_exc()}")
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route('/api/action', methods=['POST'])
 def game_action():
-    api_key = request.headers.get('X-Gemini-API-Key', '')
-    # JSON 파싱 오류 방지를 위해 silent=True 사용
-    data = request.get_json(silent=True) or {}
-    user_input = data.get('command', '')
-    
-    session_manager.state['api_key'] = api_key
-    ui_data = session_manager.process_action(user_input)
-    return jsonify(ui_data)
+    try:
+        api_key = request.headers.get('X-Gemini-API-Key', '')
+        data = request.get_json(silent=True) or {}
+        user_input = data.get('command', '')
+        
+        print(f"ACTION REQUEST: {user_input}")
+        session_manager.state['api_key'] = api_key
+        ui_data = session_manager.process_action(user_input)
+        return jsonify(ui_data)
+    except Exception as e:
+        print(f"ACTION ERROR: {traceback.format_exc()}")
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route('/api/hint', methods=['POST'])
 def hint():
-    api_key = request.headers.get('X-Gemini-API-Key', '')
-    session_manager.state['api_key'] = api_key
-    ui_data = session_manager.get_hint()
-    return jsonify(ui_data)
+    try:
+        api_key = request.headers.get('X-Gemini-API-Key', '')
+        session_manager.state['api_key'] = api_key
+        ui_data = session_manager.get_hint()
+        return jsonify(ui_data)
+    except Exception as e:
+        print(f"HINT ERROR: {traceback.format_exc()}")
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
-@app.route('/api/load', methods=['POST'])
-def load_game():
-    api_key = request.headers.get('X-Gemini-API-Key', '')
-    data = request.get_json(silent=True) or {}
-    state_data = data.get('state')
-    
-    if not state_data:
-        response = jsonify({"error": "No save data"})
-        response.status_code = 400
-        return response
-    
-    session_manager.state = state_data
-    session_manager.state['api_key'] = api_key
-    return jsonify(session_manager.format_state_for_ui())
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # 전역 에러 핸들러: 어떤 오류가 나도 JSON과 CORS를 보장
+    response = jsonify({
+        "error": "Internal Server Error",
+        "message": str(e),
+        "traceback": traceback.format_exc()
+    })
+    return response, 500
 
 if __name__ == '__main__':
+    # 런타임 오류 방지를 위해 os.environ 사용 시 os 임포트 확인 완료
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
